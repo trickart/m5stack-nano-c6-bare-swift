@@ -1,0 +1,23 @@
+{
+    "schemaVersion": "1.0",
+    "swiftCompiler": {
+        "extraCLIOptions": [
+            "-enable-experimental-feature", "Embedded",
+            "-Xfrontend", "-disable-stack-protector",
+            "-use-ld=lld",
+            "-nostartfiles",
+            "-Xlinker", "-nostdlib",
+            "-Xclang-linker", "-nostdlib",
+            "-Xlinker", "-static",
+            "-wmo",
+            "-Osize",
+            "-Xlinker", "-e", "-Xlinker", "main"
+        ]
+    },
+    "linker": {
+        "extraCLIOptions": [
+            "-T", "linker/esp32c6.ld",
+            "--gc-sections"
+        ]
+    }
+}

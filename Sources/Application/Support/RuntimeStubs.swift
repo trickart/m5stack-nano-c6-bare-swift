@@ -1,0 +1,100 @@
+// Runtime stubs required by Embedded Swift on bare-metal RISC-V.
+//
+// These provide the minimal C runtime functions that the Swift
+// compiler expects, since we link with -nostdlib.
+
+// MARK: - Linker symbol helper
+
+@inline(__always)
+func linkerSymbolAddress(_ symbol: inout UInt8) -> UInt {
+    withUnsafePointer(to: &symbol) { UInt(bitPattern: $0) }
+}
+
+// MARK: - Heap Allocation (bump allocator)
+
+@_extern(c, "_heap_start") nonisolated(unsafe) var _heap_start: UInt8
+
+/// Current top of the heap (grows upward).
+nonisolated(unsafe) var heapPointer: UInt = 0
+
+@c(posix_memalign)
+func posixMemalign(
+    _ memptr: UnsafeMutablePointer<UnsafeMutableRawPointer?>,
+    _ alignment: Int,
+    _ size: Int
+) -> Int32 {
+    if heapPointer == 0 {
+        heapPointer = linkerSymbolAddress(&_heap_start)
+    }
+
+    // Align up
+    let mask = UInt(alignment) &- 1
+    heapPointer = (heapPointer &+ mask) & ~mask
+
+    memptr.pointee = UnsafeMutableRawPointer(bitPattern: heapPointer)
+    heapPointer &+= UInt(size)
+    return 0
+}
+
+@c(free)
+func freeStub(_ ptr: UnsafeMutableRawPointer?) {
+    // No-op: bump allocator never frees.
+}
+
+// MARK: - Memory Operations
+
+@c(memset)
+@inline(never)
+func memsetStub(
+    _ dest: UnsafeMutableRawPointer,
+    _ value: Int32,
+    _ count: Int
+) -> UnsafeMutableRawPointer {
+    let byte = UInt8(truncatingIfNeeded: value)
+    let ptr = dest.assumingMemoryBound(to: UInt8.self)
+    for i in 0..<count {
+        ptr[i] = byte
+    }
+    return dest
+}
+
+@c(memcpy)
+@inline(never)
+func memcpyStub(
+    _ dest: UnsafeMutableRawPointer,
+    _ src: UnsafeRawPointer,
+    _ count: Int
+) -> UnsafeMutableRawPointer {
+    let d = dest.assumingMemoryBound(to: UInt8.self)
+    let s = src.assumingMemoryBound(to: UInt8.self)
+    for i in 0..<count {
+        d[i] = s[i]
+    }
+    return dest
+}
+
+@c(memmove)
+@inline(never)
+func memmoveStub(
+    _ dest: UnsafeMutableRawPointer,
+    _ src: UnsafeRawPointer,
+    _ count: Int
+) -> UnsafeMutableRawPointer {
+    let d = dest.assumingMemoryBound(to: UInt8.self)
+    let s = src.assumingMemoryBound(to: UInt8.self)
+    if UInt(bitPattern: d) < UInt(bitPattern: s) {
+        // Copy forward
+        for i in 0..<count {
+            d[i] = s[i]
+        }
+    } else if UInt(bitPattern: d) > UInt(bitPattern: s) {
+        // Copy backward
+        var i = count
+        while i > 0 {
+            i &-= 1
+            d[i] = s[i]
+        }
+    }
+    return dest
+}
+
