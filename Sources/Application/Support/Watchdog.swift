@@ -1,36 +1,40 @@
-private let wdtUnlockKey: UInt32 = 0x50D8_3AA1
-private let swdUnlockKey: UInt32 = 0x8F1D_312A
+private let unlockKey: UInt32 = 0x50D8_3AA1
 
 /// Disable a MWDT (Main Watchdog Timer) given the TIMG base address.
+/// ESP32-C6 MWDT config registers require conf_update_en (bit 22) to apply changes.
 private func disableMWDT(_ base: UInt32) {
-    regStore(base + 0x64, wdtUnlockKey)
+    regStore(base + 0x64, unlockKey)          // Unlock WPROTECT
     var cfg = regLoad(base + 0x48)
     cfg &= ~(UInt32(1) << 31)                // Clear wdt_en
-    cfg &= ~(UInt32(1) << 12)                // Clear flashboot_mod_en
+    cfg &= ~(UInt32(1) << 14)                // Clear flashboot_mod_en
     regStore(base + 0x48, cfg)
-    regStore(base + 0x64, 0)
+    // Trigger async config update
+    cfg = regLoad(base + 0x48)
+    cfg |= (1 << 22)                         // Set conf_update_en
+    regStore(base + 0x48, cfg)
+    regStore(base + 0x64, 0)                  // Re-lock WPROTECT
 }
 
 /// Disable RTC Watchdog (LP_WDT at 0x600B_1C00).
+/// LP_WDT config registers update immediately (no conf_update_en needed).
 private func disableRWDT() {
     let base: UInt32 = 0x600B_1C00
-    regStore(base + 0x18, wdtUnlockKey)
+    regStore(base + 0x18, unlockKey)          // Unlock WPROTECT
+    regStore(base + 0x14, 1)                  // Feed before disabling
     var cfg = regLoad(base)
     cfg &= ~(UInt32(1) << 31)                // Clear wdt_en
-    cfg &= ~(UInt32(1) << 12)                // Clear flashboot_mod_en
     regStore(base, cfg)
-    regStore(base + 0x14, 1)                 // Feed
-    regStore(base + 0x18, 0)
+    regStore(base + 0x18, 0)                  // Re-lock WPROTECT
 }
 
-/// Disable Super Watchdog (SWD at 0x600B_1C20).
+/// Disable Super Watchdog (SWD).
+/// ESP32-C6 SWD uses the same unlock key as the WDT (0x50D83AA1).
 private func disableSWD() {
-    let base: UInt32 = 0x600B_1C20
-    regStore(base + 0x0C, swdUnlockKey)
-    var cfg = regLoad(base)
+    regStore(0x600B_1C20, unlockKey)          // Unlock SWD_WPROTECT
+    var cfg = regLoad(0x600B_1C1C)            // Read SWD_CONFIG
     cfg |= (1 << 18)                          // Set swd_auto_feed_en
-    regStore(base, cfg)
-    regStore(base + 0x0C, 0)
+    regStore(0x600B_1C1C, cfg)                // Write SWD_CONFIG
+    regStore(0x600B_1C20, 0)                  // Re-lock SWD_WPROTECT
 }
 
 /// Disable all watchdog timers to prevent chip reset.

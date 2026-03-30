@@ -83,15 +83,20 @@ Each watchdog register is write-protected and requires the unlock key `0x50D8_3A
 
 | Offset | Register | Purpose |
 |--------|----------|---------|
-| `0x48` | `WDTCONFIG0` | bit 31: `wdt_en`, bit 12: `flashboot_mod_en` |
+| `0x48` | `WDTCONFIG0` | bit 31: `wdt_en`, bit 22: `conf_update_en`, bit 14: `flashboot_mod_en` |
 | `0x64` | `WDTWPROTECT` | Write protection (unlocked by writing the key) |
+
+Config registers are updated asynchronously — `conf_update_en` (bit 22) must be set after modification.
 
 ```swift
 private func disableMWDT(_ base: UInt32) {
     regStore(base + 0x64, 0x50D8_3AA1)       // Unlock
     var cfg = regLoad(base + 0x48)
     cfg &= ~(UInt32(1) << 31)                // Clear wdt_en
-    cfg &= ~(UInt32(1) << 12)                // Clear flashboot_mod_en
+    cfg &= ~(UInt32(1) << 14)                // Clear flashboot_mod_en
+    regStore(base + 0x48, cfg)
+    cfg = regLoad(base + 0x48)
+    cfg |= (1 << 22)                         // Set conf_update_en
     regStore(base + 0x48, cfg)
     regStore(base + 0x64, 0)                 // Re-lock
 }
@@ -109,12 +114,12 @@ A feed operation is required before disabling.
 
 ### Super Watchdog (SWD)
 
-The unlock key is `0x8F1D_312A` (different from MWDT).
+The SWD registers are located at LP_WDT base + offset. The unlock key is `0x50D8_3AA1` (same as MWDT/RWDT).
 
 | Offset | Register | Purpose |
 |--------|----------|---------|
-| `0x00` | `SWD_CONFIG` | bit 18: `swd_auto_feed_en` |
-| `0x0C` | `SWD_WPROTECT` | Write protection |
+| `0x1C` | `SWD_CONFIG` | bit 18: `swd_auto_feed_en` |
+| `0x20` | `SWD_WPROTECT` | Write protection |
 
 SWD cannot be fully disabled, so `swd_auto_feed_en` is enabled to let the hardware auto-feed.
 
