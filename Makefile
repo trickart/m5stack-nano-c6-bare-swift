@@ -10,26 +10,24 @@ export PATH := $(LLD_DIR):$(PATH)
 
 .PHONY: build flash clean image_info
 
+SWIFT_RUN := TOOLCHAINS=$(TOOLCHAINS) swift
+
 build:
 	@mkdir -p build
 	TOOLCHAINS=$(TOOLCHAINS) swift build --triple $(TRIPLE) --toolset toolset.json
-	. ~/esp/esp-idf/export.sh >/dev/null 2>&1 && \
-	esptool.py --chip esp32c6 elf2image \
+	$(SWIFT_RUN) Tools/elf2image.swift \
 		--flash_mode dio --flash_freq 80m --flash_size 2MB \
 		-o $(BIN) $(ELF)
 
 flash: build
-	. ~/esp/esp-idf/export.sh >/dev/null 2>&1 && \
-	esptool.py --chip esp32c6 -b 460800 \
-		--before default_reset --after hard_reset \
-		write_flash --flash_mode dio --flash_size 2MB --flash_freq 80m \
+	$(SWIFT_RUN) Tools/write-flash.swift \
+		-b 460800 \
 		0x0     bootloader/bootloader.bin \
 		0x8000  bootloader/partition-table.bin \
 		0x10000 $(BIN)
 
 image_info: build
-	. ~/esp/esp-idf/export.sh >/dev/null 2>&1 && \
-	esptool.py --chip esp32c6 image_info $(BIN)
+	$(SWIFT_RUN) Tools/image-info.swift $(BIN)
 
 clean:
 	rm -rf .build build
