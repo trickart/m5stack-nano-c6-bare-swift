@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `Tools/` directory contains Swift scripts that handle build and flash operations without depending on ESP-IDF or esptool.py.
+The `Tools/` directory contains Swift scripts that handle build and flash operations with no external dependencies.
 All scripts can be run directly with `TOOLCHAINS=org.swift.630202603201a swift Tools/<script>.swift`.
 
 | Tool | Role |
@@ -164,8 +164,7 @@ Displays the magic byte, segment count, entry point, flash configuration, and ad
 
 ## gen-partition-table.swift
 
-Generates a binary partition table (3072 bytes) matching the ESP-IDF format.
-Replaces the need to extract `partition-table.bin` from an ESP-IDF build.
+Generates a binary partition table (3072 bytes) matching the ESP32 partition table format.
 See [02-bootloader-flash-image.md](02-bootloader-flash-image.md) for the partition layout.
 
 ### Usage
@@ -186,9 +185,13 @@ build:
 partition-table:
     $(SWIFT_RUN) Tools/gen-partition-table.swift -o $(PARTITION_BIN)
 
-flash: build partition-table
+bootloader:
+    swift build --triple $(TRIPLE) --toolset toolset-bootloader.json --product Bootloader
+    $(SWIFT_RUN) Tools/elf2image.swift ... -o $(BOOTLOADER_BIN) $(BOOTLOADER_ELF)
+
+flash: build bootloader partition-table
     $(SWIFT_RUN) Tools/write-flash.swift -b 460800 \
-        0x0 bootloader/bootloader.bin \
+        0x0 $(BOOTLOADER_BIN) \
         0x8000 $(PARTITION_BIN) \
         0x10000 $(BIN)
 
@@ -196,5 +199,4 @@ image_info: build
     $(SWIFT_RUN) Tools/image-info.swift $(BIN)
 ```
 
-This allows the full build-to-flash pipeline to run without `source export.sh` or any ESP-IDF environment.
-The only requirement is the Swift toolchain (`org.swift.630202603201a`).
+The full build-to-flash pipeline requires only the Swift toolchain (`org.swift.630202603201a`) — no ESP-IDF or other external tools needed.

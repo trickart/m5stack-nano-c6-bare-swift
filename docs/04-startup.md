@@ -21,7 +21,7 @@ SwiftPM's `executableTarget` generates the `main` symbol, which is set as the en
 
 ## Why C/Assembly Is Not Needed
 
-The ESP-IDF bootloader completes the following before jumping to the app entry point:
+The 2nd stage bootloader (written in Swift, `Sources/Bootloader/`) completes the following before jumping to the app entry point:
 1. Sets the **stack pointer (SP)**
 2. **Copies** IRAM segments from Flash to RAM
 3. Configures Flash MMU mapping
@@ -30,8 +30,8 @@ The ESP-IDF bootloader completes the following before jumping to the app entry p
 
 ```
 ROM Bootloader
-  → 2nd Stage Bootloader (ESP-IDF)
-    → SP setup, segment loading, Flash MMU configuration
+  → 2nd Stage Bootloader (Swift, Sources/Bootloader/)
+    → disableWatchdogs, SP setup, segment loading, Flash MMU configuration
       → main() [@main Application.main()]
         → disableWatchdogs()  ← Disable all WDTs (highest priority)
         → GPIO initialization

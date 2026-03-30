@@ -1,6 +1,6 @@
 # M5Stack NanoC6 Bare-Metal Swift
 
-A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/core/M5Stack%20NanoC6) (ESP32-C6), running **without any C, assembly, or ESP-IDF runtime** — pure Embedded Swift from entry point to LED blink.
+A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/core/M5Stack%20NanoC6) (ESP32-C6), running **without any C, assembly, or ESP-IDF** — pure Embedded Swift from bootloader to LED blink.
 
 <p align="center">
   <img src="docs/images/demo.gif" alt="LED blink demo on M5Stack NanoC6" width="320">
@@ -19,6 +19,14 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 
 ```
 ├── Sources/
+│   ├── Bootloader/           # 2nd stage bootloader (pure Swift)
+│   │   ├── Bootloader.swift  # Entry point — flash read, MMU setup, jump to app
+│   │   ├── FlashRead.swift   # SPI flash reading via direct SPI1 registers
+│   │   ├── FlashConfig.swift # SPI clock and read mode configuration
+│   │   ├── MMU.swift         # Flash MMU page table configuration
+│   │   ├── Watchdog.swift    # WDT disable
+│   │   ├── Delay.swift       # SYSTIMER-based delay
+│   │   └── RuntimeStubs.swift
 │   ├── Application/          # Main application
 │   │   ├── Application.swift # @main entry point — LED blink loop
 │   │   └── Support/
@@ -34,13 +42,15 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │       ├── SYSTIMER.swift
 │       └── USB_DEVICE.swift
 ├── Tools/
-│   ├── elf2image.swift       # ELF to ESP flash image converter
-│   ├── write-flash.swift     # Flash writer via serial (SLIP protocol)
-│   └── image-info.swift      # Image header inspector
-├── bootloader/               # Pre-built ESP-IDF bootloader & partition table
+│   ├── elf2image.swift           # ELF to ESP flash image converter
+│   ├── write-flash.swift         # Flash writer via serial (SLIP protocol)
+│   ├── image-info.swift          # Image header inspector
+│   └── gen-partition-table.swift # Partition table generator
 ├── linker/
-│   └── esp32c6.ld            # Custom linker script
-├── toolset.json              # Compiler & linker flags
+│   ├── esp32c6.ld            # Application linker script
+│   └── bootloader.ld         # Bootloader linker script
+├── toolset.json              # Application compiler & linker flags
+├── toolset-bootloader.json   # Bootloader compiler & linker flags
 ├── Makefile                  # Build & flash automation
 ├── Package.swift
 └── docs/                     # Detailed documentation for each subsystem
@@ -98,7 +108,7 @@ You should see `Swift: blinking` messages and the blue LED toggling every 500ms.
 
 ## How It Works
 
-The ESP-IDF 2nd stage bootloader handles low-level initialization (stack pointer, segment loading, Flash MMU), then jumps to the Swift `@main` entry point. From there, everything is pure Swift:
+The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (stack pointer, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
 
 1. **Disable watchdogs** — The bootloader leaves WDTs enabled; without feeding them, the chip resets after a few seconds
 2. **Configure GPIO7** — Set IO_MUX to GPIO function, route through GPIO matrix, enable output

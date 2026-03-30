@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.macOS(.v10_15)],
     products: [
         .executable(name: "Application", targets: ["Application"]),
+        .executable(name: "Bootloader", targets: ["Bootloader"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-mmio.git", branch: "main"),
@@ -26,6 +27,14 @@ let package = Package(
             dependencies: [
                 "Registers",
             ],
+            swiftSettings: [
+                .enableExperimentalFeature("Embedded"),
+                .enableExperimentalFeature("Extern"),
+                .enableExperimentalFeature("Volatile"),
+            ]
+        ),
+        .executableTarget(
+            name: "Bootloader",
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
                 .enableExperimentalFeature("Extern"),
