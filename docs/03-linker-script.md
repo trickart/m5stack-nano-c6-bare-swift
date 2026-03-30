@@ -4,7 +4,7 @@
 
 File: `linker/esp32c6.ld`
 
-A linker script that matches the segment layout required by the ESP-IDF bootloader (`SOC_MMU_DI_VADDR_SHARED`).
+A linker script that matches the segment layout required by the 2nd stage bootloader (`SOC_MMU_DI_VADDR_SHARED`).
 
 ## Memory Map
 
@@ -31,16 +31,11 @@ iram (0x40800000)  ← Bootloader copies from Flash to RAM
 └── .stack         Stack area (16KB)
 ```
 
-## ESP-IDF Bootloader Compatibility
+## Bootloader Compatibility
 
 ### Two-Segment Requirement
 
-The ESP32-C6 bootloader has `SOC_MMU_DI_VADDR_SHARED` enabled and requires **exactly 2** Flash MMU segments in the `0x42000000` range:
-
-```c
-// bootloader_utility.c:764
-assert(rom_index == 2);
-```
+The 2nd stage bootloader expects **exactly 2** Flash MMU segments in the `0x42000000` range (matching the `SOC_MMU_DI_VADDR_SHARED` convention):
 
 Therefore, `.text` is placed in `irom` and `.rodata` in `drom` (at a separate address `0x42010020`).
 
