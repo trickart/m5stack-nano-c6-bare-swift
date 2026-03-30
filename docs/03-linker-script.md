@@ -46,7 +46,7 @@ Therefore, `.text` is placed in `irom` and `.rodata` in `drom` (at a separate ad
 
 ### Reason for the 0x20 Offset
 
-The 0x18-byte file header + 0x08-byte segment header added by esptool.py must satisfy the Flash MMU constraint `paddr % 64KB == vaddr % 64KB`.
+The 0x18-byte file header + 0x08-byte segment header added by `elf2image.swift` (same layout as esptool.py) must satisfy the Flash MMU constraint `paddr % 64KB == vaddr % 64KB`.
 
 ## Entry Point
 

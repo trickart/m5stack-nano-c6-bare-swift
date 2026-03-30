@@ -83,10 +83,10 @@ cp build/partition_table/partition-table.bin <project>/bootloader/
 
 ### ELF → ESP Image Conversion
 
-Convert the ELF file built with Swift into an ESP32-C6 image using `esptool.py`.
+Convert the ELF file built with Swift into an ESP32-C6 image using `Tools/elf2image.swift` (pure Swift replacement for esptool.py's `elf2image`).
 
 ```bash
-esptool.py --chip esp32c6 elf2image \
+TOOLCHAINS=org.swift.630202603201a swift Tools/elf2image.swift \
   --flash_mode dio \
   --flash_freq 80m \
   --flash_size 2MB \
@@ -107,11 +107,11 @@ ESP32-C6 app images begin with the following header (24 bytes):
 | 0x04 | 4 | Entry point address |
 | 0x08 | 16 | Extended header (WP pin, SPI drive settings, etc.) |
 
-`esptool.py elf2image` automatically generates this header, so manual construction is unnecessary.
+`elf2image.swift` automatically generates this header (same format as esptool.py), so manual construction is unnecessary.
 
 ### Required ELF Segments
 
-`esptool.py` reads the loadable segments from the ELF and classifies them based on the following address ranges:
+`elf2image.swift` reads the loadable segments from the ELF and classifies them based on the following address ranges (same logic as esptool.py):
 
 | Address Range | Classification | Description |
 |---------------|---------------|-------------|
@@ -121,11 +121,7 @@ ESP32-C6 app images begin with the following header (24 bytes):
 ## Flash Write Command
 
 ```bash
-source ~/esp/esp-idf/export.sh
-
-esptool.py --chip esp32c6 -b 460800 \
-  --before default_reset --after hard_reset \
-  write_flash --flash_mode dio --flash_size 2MB --flash_freq 80m \
+TOOLCHAINS=org.swift.630202603201a swift Tools/write-flash.swift \
   0x0     bootloader/bootloader.bin \
   0x8000  bootloader/partition-table.bin \
   0x10000 build/app.bin
