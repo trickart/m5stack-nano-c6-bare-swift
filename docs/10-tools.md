@@ -10,6 +10,7 @@ All scripts can be run directly with `TOOLCHAINS=org.swift.630202603201a swift T
 | `elf2image.swift` | ELF to ESP32-C6 flash image conversion |
 | `write-flash.swift` | Flash writing to device via serial |
 | `image-info.swift` | Display header information of a generated image |
+| `gen-partition-table.swift` | Generate ESP32-C6 partition table binary |
 
 ## elf2image.swift
 
@@ -161,6 +162,18 @@ swift image-info.swift <image.bin>
 
 Displays the magic byte, segment count, entry point, flash configuration, and address/size of each segment.
 
+## gen-partition-table.swift
+
+Generates a binary partition table (3072 bytes) matching the ESP-IDF format.
+Replaces the need to extract `partition-table.bin` from an ESP-IDF build.
+See [02-bootloader-flash-image.md](02-bootloader-flash-image.md) for the partition layout.
+
+### Usage
+
+```
+swift gen-partition-table.swift [-o output.bin]
+```
+
 ## Makefile Integration
 
 ```makefile
@@ -170,10 +183,13 @@ build:
     swift build --triple $(TRIPLE) --toolset toolset.json
     $(SWIFT_RUN) Tools/elf2image.swift ... -o $(BIN) $(ELF)
 
-flash: build
+partition-table:
+    $(SWIFT_RUN) Tools/gen-partition-table.swift -o $(PARTITION_BIN)
+
+flash: build partition-table
     $(SWIFT_RUN) Tools/write-flash.swift -b 460800 \
         0x0 bootloader/bootloader.bin \
-        0x8000 bootloader/partition-table.bin \
+        0x8000 $(PARTITION_BIN) \
         0x10000 $(BIN)
 
 image_info: build
