@@ -129,8 +129,8 @@ export PATH := $(LLD_DIR):$(PATH)
 
 | Command | Action |
 |---------|--------|
-| `make build` | SwiftPM build → Generate ESP image with `esptool.py elf2image` |
-| `make flash` | `make build` + Flash to device with `esptool.py write_flash` |
+| `make build` | SwiftPM build → Generate ESP image with `Tools/elf2image.swift` |
+| `make flash` | `make build` + Flash to device with `Tools/write-flash.swift` |
 | `make image_info` | Display information about the generated image |
 | `make clean` | Delete `.build/` and `build/` |
 
@@ -142,7 +142,7 @@ export PATH := $(LLD_DIR):$(PATH)
 | `0x08000` | `bootloader/partition-table.bin` | Partition table |
 | `0x10000` | `build/app.bin` | Swift application |
 
-### esptool.py Parameters
+### Flash Parameters
 
 | Parameter | Value | Meaning |
 |-----------|-------|---------|
@@ -159,8 +159,8 @@ Swift source (.swift)
 Object files (.o)
   ↓ ld.lld (linker/esp32c6.ld)
 ELF binary (.build/.../Application)
-  ↓ esptool.py elf2image
+  ↓ Tools/elf2image.swift
 ESP image (build/app.bin)
-  ↓ esptool.py write_flash
+  ↓ Tools/write-flash.swift
 M5Stack NanoC6 flash memory
 ```

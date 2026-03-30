@@ -33,6 +33,10 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │       ├── IO_MUX.swift
 │       ├── SYSTIMER.swift
 │       └── USB_DEVICE.swift
+├── Tools/
+│   ├── elf2image.swift       # ELF to ESP flash image converter
+│   ├── write-flash.swift     # Flash writer via serial (SLIP protocol)
+│   └── image-info.swift      # Image header inspector
 ├── bootloader/               # Pre-built ESP-IDF bootloader & partition table
 ├── linker/
 │   └── esp32c6.ld            # Custom linker script
@@ -47,8 +51,9 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 | Tool | Version | Notes |
 |------|---------|-------|
 | Swift 6.3 toolchain | `org.swift.630202603201a` | Must support Embedded Swift & RISC-V |
-| ESP-IDF | v5.x | Only needed for `esptool.py` |
 | macOS | — | Uses `xcrun` for toolchain discovery |
+
+No ESP-IDF installation required. The `Tools/` directory contains pure Swift replacements for `esptool.py` (ELF-to-image conversion, flash writing, image inspection).
 
 ## Quick Start
 
@@ -67,38 +72,23 @@ swiftly install 6.3
 export TOOLCHAINS=org.swift.630202603201a
 ```
 
-### 2. Install ESP-IDF
-
-ESP-IDF is needed for `esptool.py` (flash image generation and writing). Only the tooling is used — the ESP-IDF runtime is not linked.
-
-```bash
-mkdir -p ~/esp && cd ~/esp
-git clone --depth 1 --branch v5.4 https://github.com/espressif/esp-idf.git
-cd esp-idf
-git submodule update --init --depth 1
-./install.sh
-
-# Activate ESP-IDF tools (needed in every new shell session)
-source ~/esp/esp-idf/export.sh
-```
-
-### 3. Build
+### 2. Build
 
 ```bash
 make build
 ```
 
-This runs `swift build` for the `riscv32-none-none-eabi` target, then converts the ELF to an ESP flash image.
+This runs `swift build` for the `riscv32-none-none-eabi` target, then converts the ELF to an ESP flash image using `Tools/elf2image.swift`.
 
-### 4. Flash
+### 3. Flash
 
 ```bash
 make flash
 ```
 
-Writes the bootloader, partition table, and application to the NanoC6.
+Writes the bootloader, partition table, and application to the NanoC6 using `Tools/write-flash.swift`.
 
-### 5. Monitor
+### 4. Monitor
 
 ```bash
 screen /dev/cu.usbmodem* 115200
@@ -131,6 +121,7 @@ Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
 | [07-gpio](docs/07-gpio.md) | GPIO driver implementation |
 | [08-delay-serial](docs/08-delay-serial.md) | SYSTIMER delay & USB Serial JTAG output |
 | [09-build-system](docs/09-build-system.md) | Build pipeline (SwiftPM + toolset + Make) |
+| [10-tools](docs/10-tools.md) | Swift-based tools (elf2image, write-flash, image-info) |
 
 ## Acknowledgments
 
