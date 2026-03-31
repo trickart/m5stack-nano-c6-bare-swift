@@ -1,6 +1,6 @@
 # M5Stack NanoC6 Bare-Metal Swift
 
-A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/core/M5Stack%20NanoC6) (ESP32-C6), running **without any C, assembly, or ESP-IDF** — pure Embedded Swift from bootloader to LED blink.
+A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/core/M5NanoC6) (ESP32-C6), running **without any C, assembly, or ESP-IDF** — pure Embedded Swift from bootloader to LED blink.
 
 <p align="center">
   <img src="docs/images/demo.gif" alt="LED blink demo on M5Stack NanoC6" width="320">
@@ -13,7 +13,7 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Drives GPIO7 (blue status LED) through direct IO_MUX / GPIO register manipulation
 - Outputs serial messages over USB Serial JTAG
 - Implements microsecond delays using the SYSTIMER peripheral
-- Provides runtime stubs (`posix_memalign`, `memset`, `memcpy`, `memmove`) entirely in Swift
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift
 
 ## Project Structure
 
@@ -69,7 +69,7 @@ No ESP-IDF installation required. The `Tools/` directory contains pure Swift rep
 
 ### 1. Install Swift 6.3
 
-Install [swiftly](https://swiftlang.github.io/swiftly/) (Swift toolchain manager), then install the Swift 6.3 snapshot:
+Install [swiftly](https://swiftlang.github.io/swiftly/) (Swift toolchain manager), then install Swift 6.3:
 
 ```bash
 # Install swiftly
@@ -108,7 +108,7 @@ You should see `Swift: blinking` messages and the blue LED toggling every 500ms.
 
 ## How It Works
 
-The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (stack pointer, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
+The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (BSS clearing, flash SPI configuration, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
 
 1. **Disable watchdogs** — The bootloader leaves WDTs enabled; without feeding them, the chip resets after a few seconds
 2. **Configure GPIO7** — Set IO_MUX to GPIO function, route through GPIO matrix, enable output
@@ -131,7 +131,7 @@ Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
 | [07-gpio](docs/07-gpio.md) | GPIO driver implementation |
 | [08-delay-serial](docs/08-delay-serial.md) | SYSTIMER delay & USB Serial JTAG output |
 | [09-build-system](docs/09-build-system.md) | Build pipeline (SwiftPM + toolset + Make) |
-| [10-tools](docs/10-tools.md) | Swift-based tools (elf2image, write-flash, image-info) |
+| [10-tools](docs/10-tools.md) | Swift-based tools (elf2image, write-flash, image-info, gen-partition-table) |
 
 ## Acknowledgments
 
