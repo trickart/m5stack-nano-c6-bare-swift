@@ -44,4 +44,5 @@ image_info: build
 	$(SWIFT_RUN) Tools/image-info.swift $(BIN)
 
 clean:
-	rm -rf .build build
+	TOOLCHAINS=$(TOOLCHAINS) swift package clean
+	rm -rf build
