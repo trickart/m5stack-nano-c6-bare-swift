@@ -83,10 +83,12 @@ Each watchdog register is write-protected and requires the unlock key `0x50D8_3A
 
 | Offset | Register | Purpose |
 |--------|----------|---------|
-| `0x48` | `WDTCONFIG0` | bit 31: `wdt_en`, bit 22: `conf_update_en`, bit 14: `flashboot_mod_en` |
+| `0x48` | `WDTCONFIG0` | bit 31: `wdt_en`, bits 30:29/28:27/26:25/24:23: `stg0-3`, bit 22: `conf_update_en`, bit 14: `flashboot_mod_en` |
 | `0x64` | `WDTWPROTECT` | Write protection (unlocked by writing the key) |
 
 Config registers are updated asynchronously — `conf_update_en` (bit 22) must be set after modification.
+
+All 4 stage actions (stg0–stg3) must also be cleared to 0 (OFF). Following ESP-IDF's implementation, simply clearing `wdt_en` is not sufficient — residual stage configurations can still trigger resets.
 
 ```swift
 private func disableMWDT(_ base: UInt32) {
@@ -94,6 +96,10 @@ private func disableMWDT(_ base: UInt32) {
     var cfg = regLoad(base + 0x48)
     cfg &= ~(UInt32(1) << 31)                // Clear wdt_en
     cfg &= ~(UInt32(1) << 14)                // Clear flashboot_mod_en
+    cfg &= ~(0x3 << 29)                      // Clear stg0 (bits 30:29)
+    cfg &= ~(0x3 << 27)                      // Clear stg1 (bits 28:27)
+    cfg &= ~(0x3 << 25)                      // Clear stg2 (bits 26:25)
+    cfg &= ~(0x3 << 23)                      // Clear stg3 (bits 24:23)
     regStore(base + 0x48, cfg)
     cfg = regLoad(base + 0x48)
     cfg |= (1 << 22)                         // Set conf_update_en
@@ -106,11 +112,11 @@ private func disableMWDT(_ base: UInt32) {
 
 | Offset | Register | Purpose |
 |--------|----------|---------|
-| `0x00` | `CONFIG0` | bit 31: `wdt_en`, bit 12: `flashboot_mod_en` |
+| `0x00` | `CONFIG0` | bit 31: `wdt_en`, bits 30:28/27:25/24:22/21:19: `stg0-3`, bit 12: `flashboot_mod_en` |
 | `0x14` | `FEED` | Write 1 to feed |
 | `0x18` | `WPROTECT` | Write protection |
 
-A feed operation is required before disabling.
+A feed operation is required before disabling. In addition to clearing `wdt_en`, `flashboot_mod_en` (bit 12) and all stage actions (stg0–stg3, 3-bit fields) must also be cleared. The `flashboot_mod_en` flag operates independently of `wdt_en` and can trigger resets on its own.
 
 ### Super Watchdog (SWD)
 
