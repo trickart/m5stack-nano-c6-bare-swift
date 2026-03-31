@@ -132,6 +132,13 @@ func loadRAMSegments(appFlashOffset: UInt32, segmentCount: UInt8) {
     }
 }
 
+// MARK: - Linker Symbol Helper
+
+@inline(__always)
+func linkerSymbolAddress(_ symbol: inout UInt8) -> UInt {
+    withUnsafePointer(to: &symbol) { UInt(bitPattern: $0) }
+}
+
 // MARK: - BSS Initialization
 
 @_extern(c, "_sbss") nonisolated(unsafe) var _sbss: UInt8
