@@ -10,6 +10,7 @@ ESP32-C6 startup implemented in **Pure Swift without any C or assembly**.
 @main
 struct Application {
     static func main() {
+        clearBSS()          // Zero .bss before using any globals
         disableWatchdogs()  // Highest priority
         // ... application logic
     }
@@ -26,6 +27,8 @@ The 2nd stage bootloader (written in Swift, `Sources/Bootloader/`) completes the
 2. **Copies** IRAM segments from Flash to RAM
 3. Configures Flash MMU mapping
 
+Note: The bootloader does **not** zero the application's `.bss` section. Following ESP-IDF convention (`call_start_cpu0`), the application itself clears `.bss` at the start of `main()`.
+
 ## Boot Sequence
 
 ```
@@ -33,10 +36,37 @@ ROM Bootloader
   → 2nd Stage Bootloader (Swift, Sources/Bootloader/)
     → disableWatchdogs, SP setup, segment loading, Flash MMU configuration
       → main() [@main Application.main()]
-        → disableWatchdogs()  ← Disable all WDTs (highest priority)
+        → clearBSS()        ← Zero .bss (globals not usable before this)
+        → disableWatchdogs() ← Disable all WDTs (highest priority)
         → GPIO initialization
         → Main loop
 ```
+
+## .bss Initialization
+
+File: `Sources/Application/Support/Startup.swift`
+
+On bare-metal, the `.bss` section (uninitialized global variables) is not automatically zeroed. The linker script marks `.bss` as `(NOLOAD)`, so it is not included in the flash image and contains whatever garbage is in RAM at boot.
+
+Following ESP-IDF's approach (where `call_start_cpu0` in the application, not the bootloader, zeroes `.bss`), `clearBSS()` is called as the very first operation in `main()`:
+
+```swift
+@_extern(c, "_sbss") nonisolated(unsafe) var _sbss: UInt8
+@_extern(c, "_ebss") nonisolated(unsafe) var _ebss: UInt8
+
+func clearBSS() {
+    let start = linkerSymbolAddress(&_sbss)
+    let end = linkerSymbolAddress(&_ebss)
+    guard let ptr = UnsafeMutablePointer<UInt8>(bitPattern: start) else { return }
+    var i = 0
+    while start &+ UInt(i) < end {
+        ptr[i] = 0
+        i &+= 1
+    }
+}
+```
+
+The `_sbss` / `_ebss` symbols are defined in the linker script (`linker/esp32c6.ld`).
 
 ## Watchdog Timer Disabling
 
