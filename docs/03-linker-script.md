@@ -28,8 +28,20 @@ iram (0x40800000)  ← Bootloader copies from Flash to RAM
 ├── .data          Initialized data
 ├── .got           Global Offset Table
 ├── .bss           Uninitialized data (zero-cleared)
-└── .stack         Stack area (16KB)
+├── .stack         Stack area (16KB)
+└── heap           _heap_start ~ _heap_end (0x40880000)
 ```
+
+## Heap Region
+
+The heap occupies the remaining IRAM space after `.bss` and `.stack`:
+
+```
+_heap_start = .;                          (after .stack, ALIGN(8))
+_heap_end   = ORIGIN(iram) + LENGTH(iram); (0x40880000)
+```
+
+These are linker-defined symbols (not variables). The bump allocator in `RuntimeStubs.swift` uses `linkerSymbolAddress()` to obtain their addresses via GOT entries. Allocations that would exceed `_heap_end` return `ENOMEM` (12).
 
 ## Bootloader Compatibility
 
