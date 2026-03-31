@@ -33,6 +33,7 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │   ├── Application/          # Main application
 │   │   ├── Application.swift # @main entry point — LED blink loop
 │   │   └── Support/
+│   │       ├── Startup.swift        # .bss clearing (clearBSS)
 │   │       ├── Watchdog.swift       # WDT disable (TIMG0/1, LP_WDT, SWD)
 │   │       ├── Delay.swift          # SYSTIMER-based microsecond delay
 │   │       ├── Serial.swift         # USB Serial JTAG output
