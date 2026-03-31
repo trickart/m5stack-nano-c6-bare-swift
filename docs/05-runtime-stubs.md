@@ -27,6 +27,7 @@ Since we link with `-nostdlib`, the standard library is not provided, so these m
 
 ```swift
 @_extern(c, "_heap_start") nonisolated(unsafe) var _heap_start: UInt8
+@_extern(c, "_heap_end") nonisolated(unsafe) var _heap_end: UInt8
 nonisolated(unsafe) var heapPointer: UInt = 0
 
 @c(posix_memalign)
@@ -40,6 +41,12 @@ func posixMemalign(
     }
     let mask = UInt(alignment) &- 1
     heapPointer = (heapPointer &+ mask) & ~mask
+
+    let heapEnd = linkerSymbolAddress(&_heap_end)
+    if heapPointer &+ UInt(size) > heapEnd {
+        return 12 // ENOMEM
+    }
+
     memptr.pointee = UnsafeMutableRawPointer(bitPattern: heapPointer)
     heapPointer &+= UInt(size)
     return 0
@@ -53,6 +60,7 @@ func freeStub(_ ptr: UnsafeMutableRawPointer?) {
 
 - The heap grows upward from `_heap_start` (end of BSS)
 - `_heap_end` (end of IRAM `0x40880000`) is the upper limit (defined in the linker script)
+- Allocation checks against `_heap_end` and returns `ENOMEM` (12) on overflow
 - `free` is a no-op (a sufficient strategy for embedded)
 
 ### Memory Operation Functions (memset / memcpy / memmove)
