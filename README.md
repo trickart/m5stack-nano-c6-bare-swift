@@ -13,12 +13,14 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Drives GPIO7 (blue status LED) through direct IO_MUX / GPIO register manipulation
 - Outputs serial messages over USB Serial JTAG
 - Implements microsecond delays using the SYSTIMER peripheral
-- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift, with LLVM loop idiom recognition safely disabled for memory primitives
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift, with heap allocation and memory primitives isolated in dedicated targets
 
 ## Project Structure
 
 ```
 ├── Sources/
+│   ├── HeapAllocator/        # Bump allocator (posix_memalign/free)
+│   │   └── HeapAllocator.swift
 │   ├── MemoryPrimitives/     # memset/memcpy/memmove stubs (isolated target)
 │   │   └── MemoryPrimitives.swift
 │   ├── Bootloader/           # 2nd stage bootloader (pure Swift)
@@ -27,15 +29,13 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │   │   ├── FlashConfig.swift # SPI clock and read mode configuration
 │   │   ├── MMU.swift         # Flash MMU page table configuration
 │   │   ├── Watchdog.swift    # WDT disable
-│   │   ├── Delay.swift       # SYSTIMER-based delay
-│   │   └── RuntimeStubs.swift # Heap allocator (posix_memalign/free)
+│   │   └── Delay.swift       # SYSTIMER-based delay
 │   ├── Application/          # Main application
 │   │   ├── Application.swift # @main entry point — LED blink loop
 │   │   └── Support/
 │   │       ├── Watchdog.swift       # WDT disable (TIMG0/1, LP_WDT, SWD)
 │   │       ├── Delay.swift          # SYSTIMER-based microsecond delay
 │   │       ├── Serial.swift         # USB Serial JTAG output
-│   │       ├── RuntimeStubs.swift   # Heap allocator (posix_memalign/free)
 │   │       └── VolatileRegister.swift
 │   └── Registers/            # Auto-generated register definitions (SVD2Swift)
 │       ├── Device.swift
@@ -128,7 +128,7 @@ Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
 | [02-bootloader-flash-image](docs/02-bootloader-flash-image.md) | Boot sequence & flash image format |
 | [03-linker-script](docs/03-linker-script.md) | Memory map & linker script design |
 | [04-startup](docs/04-startup.md) | Pure Swift startup & watchdog disabling |
-| [05-runtime-stubs](docs/05-runtime-stubs.md) | C stdlib stubs in Swift |
+| [05-heap-and-memory-stubs](docs/05-heap-and-memory-stubs.md) | Heap allocator & memory stubs |
 | [06-swift-mmio](docs/06-swift-mmio.md) | swift-mmio integration & SVD2Swift |
 | [07-gpio](docs/07-gpio.md) | GPIO driver implementation |
 | [08-delay-serial](docs/08-delay-serial.md) | SYSTIMER delay & USB Serial JTAG output |

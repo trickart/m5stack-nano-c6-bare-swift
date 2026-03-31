@@ -1,13 +1,12 @@
-# Task 5: Runtime Stub Implementation (in Swift)
+# Task 5: Heap Allocator & Memory Stubs
 
 ## Overview
 
 All C standard library function stubs required for linking Embedded Swift in bare-metal (`-nostdlib`) are implemented **entirely in Swift**.
 
 Files:
+- `Sources/HeapAllocator/HeapAllocator.swift` — Bump allocator (posix_memalign/free)
 - `Sources/MemoryPrimitives/MemoryPrimitives.swift` — Memory operations (memset/memcpy/memmove)
-- `Sources/Application/Support/RuntimeStubs.swift` — Heap allocator (posix_memalign/free)
-- `Sources/Bootloader/RuntimeStubs.swift` — Heap allocator (bootloader copy)
 
 ## Why Stubs Are Needed
 
@@ -27,6 +26,10 @@ Since we link with `-nostdlib`, the standard library is not provided, so these m
 ## Implementation Details
 
 ### Bump Allocator (posix_memalign / free)
+
+File: `Sources/HeapAllocator/HeapAllocator.swift`
+
+The bump allocator is isolated in its own `HeapAllocator` SwiftPM target, shared by both the Application and Bootloader executables. This eliminates code duplication and keeps the allocator separate from `MemoryPrimitives` (which requires the special `-disable-loop-idiom-memcpy` LLVM flag that the allocator does not need).
 
 ```swift
 @_extern(c, "_heap_start") nonisolated(unsafe) var _heap_start: UInt8
@@ -65,6 +68,7 @@ func freeStub(_ ptr: UnsafeMutableRawPointer?) {
 - `_heap_end` (end of IRAM `0x40880000`) is the upper limit (defined in the linker script)
 - Allocation checks against `_heap_end` and returns `ENOMEM` (12) on overflow
 - `free` is a no-op (a sufficient strategy for embedded)
+- The `_heap_start` / `_heap_end` symbols are defined in the linker script and resolved at link time, so they work correctly regardless of which SwiftPM target references them
 
 ### Memory Operation Functions (memset / memcpy / memmove)
 

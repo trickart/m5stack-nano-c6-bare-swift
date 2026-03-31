@@ -14,6 +14,13 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "HeapAllocator",
+            swiftSettings: [
+                .enableExperimentalFeature("Embedded"),
+                .enableExperimentalFeature("Extern"),
+            ]
+        ),
+        .target(
             name: "MemoryPrimitives",
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
@@ -35,6 +42,7 @@ let package = Package(
             dependencies: [
                 "Registers",
                 "MemoryPrimitives",
+                "HeapAllocator",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
@@ -46,6 +54,7 @@ let package = Package(
             name: "Bootloader",
             dependencies: [
                 "MemoryPrimitives",
+                "HeapAllocator",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
