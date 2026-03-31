@@ -5,7 +5,7 @@
 All C standard library function stubs required for linking Embedded Swift in bare-metal (`-nostdlib`) are implemented **entirely in Swift**.
 
 Files:
-- `Sources/HeapAllocator/HeapAllocator.swift` — Bump allocator (posix_memalign/free)
+- `Sources/HeapAllocator/HeapAllocator.swift` — Free-list allocator (posix_memalign/free)
 - `Sources/MemoryPrimitives/MemoryPrimitives.swift` — Memory operations (memset/memcpy/memmove)
 
 ## Why Stubs Are Needed
@@ -25,16 +25,49 @@ Since we link with `-nostdlib`, the standard library is not provided, so these m
 
 ## Implementation Details
 
-### Bump Allocator (posix_memalign / free)
+### Free-List Allocator (posix_memalign / free)
 
 File: `Sources/HeapAllocator/HeapAllocator.swift`
 
-The bump allocator is isolated in its own `HeapAllocator` SwiftPM target, shared by both the Application and Bootloader executables. This eliminates code duplication and keeps the allocator separate from `MemoryPrimitives` (which requires the special `-disable-loop-idiom-memcpy` LLVM flag that the allocator does not need).
+The allocator is isolated in its own `HeapAllocator` SwiftPM target, shared by both the Application and Bootloader executables. This eliminates code duplication and keeps the allocator separate from `MemoryPrimitives` (which requires the special `-disable-loop-idiom-memcpy` LLVM flag that the allocator does not need).
+
+#### Design
+
+A boundary-tagged free-list allocator with first-fit allocation, block splitting, and O(1) coalescing of adjacent free blocks.
+
+**Block layout** (32-bit, UInt = 4 bytes):
+
+```
+[size:4] [body: size-8 bytes] [footer:4]
+```
+
+| Field | Size | Description |
+|-------|------|-------------|
+| `size` | 4 bytes | Total block size. Bit 0 = allocated flag (1=used, 0=free) |
+| `body` | variable | Free: first 4 bytes = `nextFree` pointer. Allocated: user data |
+| `footer` | 4 bytes | Copy of `size` (enables O(1) backward coalescing) |
+
+- Minimum block size: 16 bytes (header + nextFree + pad + footer)
+- Free blocks are linked in an explicit free list via the `nextFree` field
+
+**Alignment handling:**
+
+`posix_memalign` returns pointers aligned to arbitrary power-of-2 values. When the required alignment forces the user pointer away from the block header, a back-pointer is stored at `(userPtr - 4)`. On `free()`, this back-pointer is distinguished from the `size` field by checking bit 0 (size has it set when allocated; a valid block address is always 4-byte aligned, so bit 0 = 0).
+
+**Coalescing:**
+
+On `free()`, both the next and previous adjacent blocks are checked. If free, they are merged into a single larger block using the boundary tags (footer of previous block, header of next block). This prevents fragmentation.
+
+#### Prerequisites
+
+The allocator assumes `.bss` is zeroed before use. Following ESP-IDF's convention, the application's startup code should clear `.bss` before calling any code that uses global variables. The linker script defines `_sbss` / `_ebss` symbols for this purpose.
+
+#### Key Code
 
 ```swift
-@_extern(c, "_heap_start") nonisolated(unsafe) var _heap_start: UInt8
-@_extern(c, "_heap_end") nonisolated(unsafe) var _heap_end: UInt8
-nonisolated(unsafe) var heapPointer: UInt = 0
+nonisolated(unsafe) var freeListHead: UInt = 0
+nonisolated(unsafe) var heapStart: UInt = 0
+nonisolated(unsafe) var heapEnd: UInt = 0
 
 @c(posix_memalign)
 func posixMemalign(
@@ -42,33 +75,20 @@ func posixMemalign(
     _ alignment: Int,
     _ size: Int
 ) -> Int32 {
-    if heapPointer == 0 {
-        heapPointer = linkerSymbolAddress(&_heap_start)
-    }
-    let mask = UInt(alignment) &- 1
-    heapPointer = (heapPointer &+ mask) & ~mask
-
-    let heapEnd = linkerSymbolAddress(&_heap_end)
-    if heapPointer &+ UInt(size) > heapEnd {
-        return 12 // ENOMEM
-    }
-
-    memptr.pointee = UnsafeMutableRawPointer(bitPattern: heapPointer)
-    heapPointer &+= UInt(size)
-    return 0
+    if heapStart == 0 { initHeap() }
+    // First-fit search with block splitting...
 }
 
 @c(free)
-func freeStub(_ ptr: UnsafeMutableRawPointer?) {
-    // No-op: bump allocator never frees.
+func freeBlock(_ ptr: UnsafeMutableRawPointer?) {
+    // Locate header via back-pointer, coalesce adjacent free blocks...
 }
 ```
 
-- The heap grows upward from `_heap_start` (end of BSS)
-- `_heap_end` (end of IRAM `0x40880000`) is the upper limit (defined in the linker script)
-- Allocation checks against `_heap_end` and returns `ENOMEM` (12) on overflow
-- `free` is a no-op (a sufficient strategy for embedded)
-- The `_heap_start` / `_heap_end` symbols are defined in the linker script and resolved at link time, so they work correctly regardless of which SwiftPM target references them
+- The heap region spans from `_heap_start` (after BSS + stack) to `_heap_end` (`0x40880000`, end of IRAM)
+- `_heap_start` / `_heap_end` are linker symbols defined in the linker script
+- Allocation returns `ENOMEM` (12) when no free block is large enough
+- `free()` supports real deallocation with coalescing, preventing heap exhaustion in long-running applications
 
 ### Memory Operation Functions (memset / memcpy / memmove)
 

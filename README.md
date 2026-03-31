@@ -13,13 +13,13 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Drives GPIO7 (blue status LED) through direct IO_MUX / GPIO register manipulation
 - Outputs serial messages over USB Serial JTAG
 - Implements microsecond delays using the SYSTIMER peripheral
-- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift, with heap allocation and memory primitives isolated in dedicated targets
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory primitives isolated in dedicated targets
 
 ## Project Structure
 
 ```
 ├── Sources/
-│   ├── HeapAllocator/        # Bump allocator (posix_memalign/free)
+│   ├── HeapAllocator/        # Free-list allocator (posix_memalign/free)
 │   │   └── HeapAllocator.swift
 │   ├── MemoryPrimitives/     # memset/memcpy/memmove stubs (isolated target)
 │   │   └── MemoryPrimitives.swift
