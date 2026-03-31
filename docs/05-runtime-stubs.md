@@ -4,7 +4,10 @@
 
 All C standard library function stubs required for linking Embedded Swift in bare-metal (`-nostdlib`) are implemented **entirely in Swift**.
 
-File: `Sources/Application/Support/RuntimeStubs.swift`
+Files:
+- `Sources/MemoryPrimitives/MemoryPrimitives.swift` — Memory operations (memset/memcpy/memmove)
+- `Sources/Application/Support/RuntimeStubs.swift` — Heap allocator (posix_memalign/free)
+- `Sources/Bootloader/RuntimeStubs.swift` — Heap allocator (bootloader copy)
 
 ## Why Stubs Are Needed
 
@@ -65,10 +68,16 @@ func freeStub(_ ptr: UnsafeMutableRawPointer?) {
 
 ### Memory Operation Functions (memset / memcpy / memmove)
 
+File: `Sources/MemoryPrimitives/MemoryPrimitives.swift`
+
+These are isolated in a separate `MemoryPrimitives` SwiftPM target, compiled with `-Xllvm -disable-loop-idiom-memcpy` to prevent LLVM's Loop Idiom Recognition pass from converting the byte-copy loops back into `memcpy`/`memset` calls — which would cause infinite recursion since these *are* the implementations of those functions.
+
+> **Note:** As of Swift 6.3 (`-Osize` / `-O`), LLVM's Loop Idiom Recognition pass does not appear to trigger on these byte-copy loops for the RISC-V target. The `-disable-loop-idiom-memcpy` flag is therefore a **defensive measure** against future compiler versions where this behavior may change.
+
 ```swift
 @c(memset)
 @inline(never)
-func memsetStub(_ dest: UnsafeMutableRawPointer, _ value: Int32, _ count: Int) -> UnsafeMutableRawPointer {
+public func memsetStub(_ dest: UnsafeMutableRawPointer, _ value: Int32, _ count: Int) -> UnsafeMutableRawPointer {
     let byte = UInt8(truncatingIfNeeded: value)
     let ptr = dest.assumingMemoryBound(to: UInt8.self)
     for i in 0..<count {
@@ -79,7 +88,7 @@ func memsetStub(_ dest: UnsafeMutableRawPointer, _ value: Int32, _ count: Int) -
 
 @c(memcpy)
 @inline(never)
-func memcpyStub(_ dest: UnsafeMutableRawPointer, _ src: UnsafeRawPointer, _ count: Int) -> UnsafeMutableRawPointer {
+public func memcpyStub(_ dest: UnsafeMutableRawPointer, _ src: UnsafeRawPointer, _ count: Int) -> UnsafeMutableRawPointer {
     let d = dest.assumingMemoryBound(to: UInt8.self)
     let s = src.assumingMemoryBound(to: UInt8.self)
     for i in 0..<count {
@@ -90,7 +99,7 @@ func memcpyStub(_ dest: UnsafeMutableRawPointer, _ src: UnsafeRawPointer, _ coun
 
 @c(memmove)
 @inline(never)
-func memmoveStub(_ dest: UnsafeMutableRawPointer, _ src: UnsafeRawPointer, _ count: Int) -> UnsafeMutableRawPointer {
+public func memmoveStub(_ dest: UnsafeMutableRawPointer, _ src: UnsafeRawPointer, _ count: Int) -> UnsafeMutableRawPointer {
     let d = dest.assumingMemoryBound(to: UInt8.self)
     let s = src.assumingMemoryBound(to: UInt8.self)
     if UInt(bitPattern: d) < UInt(bitPattern: s) {
@@ -103,7 +112,9 @@ func memmoveStub(_ dest: UnsafeMutableRawPointer, _ src: UnsafeRawPointer, _ cou
 }
 ```
 
-- `@inline(never)` prevents the compiler from recursively optimizing these functions
+- `@inline(never)` prevents inlining (but alone does not prevent loop idiom recognition)
+- `-Xllvm -disable-loop-idiom-memcpy` is the key flag that prevents the LLVM optimization pass from replacing loops with memcpy/memset calls
+- By isolating this flag in the `MemoryPrimitives` target, other targets retain full LLVM optimization
 - `memmove` determines the copy direction to handle overlapping regions
 
 ## Stubs Found to Be Unnecessary
