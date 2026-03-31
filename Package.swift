@@ -14,6 +14,14 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "MemoryPrimitives",
+            swiftSettings: [
+                .enableExperimentalFeature("Embedded"),
+                .enableExperimentalFeature("Extern"),
+                .unsafeFlags(["-Xllvm", "-disable-loop-idiom-memcpy"]),
+            ]
+        ),
+        .target(
             name: "Registers",
             dependencies: [
                 .product(name: "MMIO", package: "swift-mmio"),
@@ -26,6 +34,7 @@ let package = Package(
             name: "Application",
             dependencies: [
                 "Registers",
+                "MemoryPrimitives",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
@@ -35,6 +44,9 @@ let package = Package(
         ),
         .executableTarget(
             name: "Bootloader",
+            dependencies: [
+                "MemoryPrimitives",
+            ],
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
                 .enableExperimentalFeature("Extern"),

@@ -13,12 +13,14 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Drives GPIO7 (blue status LED) through direct IO_MUX / GPIO register manipulation
 - Outputs serial messages over USB Serial JTAG
 - Implements microsecond delays using the SYSTIMER peripheral
-- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift, with LLVM loop idiom recognition safely disabled for memory primitives
 
 ## Project Structure
 
 ```
 ├── Sources/
+│   ├── MemoryPrimitives/     # memset/memcpy/memmove stubs (isolated target)
+│   │   └── MemoryPrimitives.swift
 │   ├── Bootloader/           # 2nd stage bootloader (pure Swift)
 │   │   ├── Bootloader.swift  # Entry point — flash read, MMU setup, jump to app
 │   │   ├── FlashRead.swift   # SPI flash reading via direct SPI1 registers
@@ -26,14 +28,14 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │   │   ├── MMU.swift         # Flash MMU page table configuration
 │   │   ├── Watchdog.swift    # WDT disable
 │   │   ├── Delay.swift       # SYSTIMER-based delay
-│   │   └── RuntimeStubs.swift
+│   │   └── RuntimeStubs.swift # Heap allocator (posix_memalign/free)
 │   ├── Application/          # Main application
 │   │   ├── Application.swift # @main entry point — LED blink loop
 │   │   └── Support/
 │   │       ├── Watchdog.swift       # WDT disable (TIMG0/1, LP_WDT, SWD)
 │   │       ├── Delay.swift          # SYSTIMER-based microsecond delay
 │   │       ├── Serial.swift         # USB Serial JTAG output
-│   │       ├── RuntimeStubs.swift   # C stdlib stubs for -nostdlib linking
+│   │       ├── RuntimeStubs.swift   # Heap allocator (posix_memalign/free)
 │   │       └── VolatileRegister.swift
 │   └── Registers/            # Auto-generated register definitions (SVD2Swift)
 │       ├── Device.swift
