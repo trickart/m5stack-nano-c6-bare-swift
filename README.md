@@ -110,7 +110,7 @@ You should see `Swift: blinking` messages and the blue LED toggling every 500ms.
 
 The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (BSS clearing, flash SPI configuration, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
 
-1. **Disable watchdogs** — The bootloader leaves WDTs enabled; without feeding them, the chip resets after a few seconds
+1. **Disable watchdogs** — All 4 watchdogs (TIMG0/1 MWDT, RWDT, SWD) are fully disabled including stage actions and flashboot mode, following ESP-IDF's approach
 2. **Configure GPIO7** — Set IO_MUX to GPIO function, route through GPIO matrix, enable output
 3. **Blink loop** — Toggle output via W1TS/W1TC registers with SYSTIMER-based delays
 
