@@ -25,6 +25,7 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │   │   └── MemoryPrimitives.swift
 │   ├── Bootloader/           # 2nd stage bootloader (pure Swift)
 │   │   ├── Bootloader.swift  # Entry point — flash read, MMU setup, jump to app
+│   │   ├── ClockConfig.swift # PLL clock initialization (XTAL → 160MHz)
 │   │   ├── FlashRead.swift   # SPI flash reading via direct SPI1 registers
 │   │   ├── FlashConfig.swift # SPI clock and read mode configuration
 │   │   ├── MMU.swift         # Flash MMU page table configuration
@@ -111,7 +112,7 @@ You should see `Swift: blinking` messages and the blue LED toggling every 500ms.
 
 ## How It Works
 
-The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (BSS clearing, flash SPI configuration, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
+The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (BSS clearing, PLL clock setup to 160MHz, flash SPI configuration, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
 
 1. **Disable watchdogs** — All 4 watchdogs (TIMG0/1 MWDT, RWDT, SWD) are fully disabled including stage actions and flashboot mode, following ESP-IDF's approach
 2. **Configure GPIO7** — Set IO_MUX to GPIO function, route through GPIO matrix, enable output

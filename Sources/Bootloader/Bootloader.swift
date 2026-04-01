@@ -160,6 +160,7 @@ struct Bootloader {
     static func main() {
         clearBSS()
         disableWatchdogs()
+        configurePLL()
         configureFlashSPI()
 
         // Find factory app partition
