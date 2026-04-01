@@ -34,7 +34,8 @@ Note: The bootloader does **not** zero the application's `.bss` section. Followi
 ```
 ROM Bootloader
   → 2nd Stage Bootloader (Swift, Sources/Bootloader/)
-    → disableWatchdogs, SP setup, segment loading, Flash MMU configuration
+    → disableWatchdogs, configurePLL (160MHz), configureFlashSPI,
+      SP setup, segment loading, Flash MMU configuration
       → main() [@main Application.main()]
         → clearBSS()        ← Zero .bss (globals not usable before this)
         → disableWatchdogs() ← Disable all WDTs (highest priority)

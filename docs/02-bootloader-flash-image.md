@@ -82,6 +82,7 @@ The bootloader is a bare-metal Swift executable compiled to RISC-V, with all cod
 | File | Purpose |
 |------|---------|
 | `Bootloader.swift` | Main entry point and boot flow |
+| `ClockConfig.swift` | PLL clock initialization (XTAL → 160MHz) |
 | `FlashRead.swift` | SPI flash reading via direct SPI1 register access |
 | `FlashConfig.swift` | SPI clock configuration and read mode setup |
 | `MMU.swift` | Flash MMU page table configuration |
@@ -92,7 +93,7 @@ The bootloader is a bare-metal Swift executable compiled to RISC-V, with all cod
 ### Boot Flow
 
 ```
-clearBSS() → disableWatchdogs() → configureFlashSPI()
+clearBSS() → disableWatchdogs() → configurePLL() → configureFlashSPI()
 → findFactoryApp()       // Read partition table, locate factory app
 → readImageHeader()      // Verify magic (0xE9), get segment count & entry point
 → loadRAMSegments()      // Copy IRAM/DRAM segments from flash to RAM
@@ -101,6 +102,17 @@ clearBSS() → disableWatchdogs() → configureFlashSPI()
 ```
 
 All flash I/O is performed by directly controlling the SPI1 controller registers (`FlashRead.swift`), with no ROM function dependencies. Cache control (disable/enable, bus shutdown) is also implemented in pure Swift via EXTMEM registers (`MMU.swift`).
+
+### PLL Clock Initialization
+
+The ROM bootloader calibrates the 480MHz BBPLL but switches the CPU back to XTAL before jumping to the 2nd stage. `configurePLL()` re-enables PLL and switches the CPU clock source:
+
+1. **Power up BBPLL** via `PMU_IMM_HP_CK_POWER_REG` (`0x600B_01CC`) — set `XPD_BB_I2C`, `XPD_BBPLL`, and `GLOBAL_BBPLL_ICG` bits
+2. **Wait for PLL stabilization** (~10µs busy loop)
+3. **Set clock dividers** — CPU: 160MHz (480MHz / 3), AHB: 80MHz, APB: 80MHz
+4. **Switch clock source** — `PCR_SYSCLK_CONF_REG` (`0x6009_6110`) `soc_clk_sel` = 1 (PLL)
+
+This must be called before `configureFlashSPI()`, since the MSPI clock divider (480MHz / 6 = 80MHz) depends on PLL being active. SYSTIMER is unaffected (always runs at 16MHz from XTAL).
 
 ### MMU Configuration
 
