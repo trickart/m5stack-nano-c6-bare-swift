@@ -13,7 +13,8 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Drives GPIO7 (blue status LED) through direct IO_MUX / GPIO register manipulation
 - Outputs serial messages over USB Serial JTAG
 - Implements microsecond delays using the SYSTIMER peripheral
-- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory primitives isolated in dedicated targets
+- Enables the hardware RNG via SAR ADC entropy source, with a ChaCha20-based CSPRNG providing `arc4random_buf` for `Hashable` support (verified with Dieharder test suite)
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`, `__ashldi3`, `__lshrdi3`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory primitives isolated in dedicated targets
 
 ## Project Structure
 
@@ -38,6 +39,8 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │   │       ├── Watchdog.swift       # WDT disable (TIMG0/1, LP_WDT, SWD)
 │   │       ├── Delay.swift          # SYSTIMER-based microsecond delay
 │   │       ├── Serial.swift         # USB Serial JTAG output
+│   │       ├── Random.swift         # ChaCha20 CSPRNG + HW RNG entropy source
+│   │       ├── ChaCha20.swift       # ChaCha20 block cipher
 │   │       └── VolatileRegister.swift
 │   └── Registers/            # Auto-generated register definitions (SVD2Swift)
 │       ├── Device.swift
@@ -115,8 +118,9 @@ You should see `Swift: blinking` messages and the blue LED toggling every 500ms.
 The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles low-level initialization (BSS clearing, PLL clock setup to 160MHz, flash SPI configuration, segment loading, Flash MMU), then jumps to the application's `@main` entry point. Everything is pure Swift:
 
 1. **Disable watchdogs** — All 4 watchdogs (TIMG0/1 MWDT, RWDT, SWD) are fully disabled including stage actions and flashboot mode, following ESP-IDF's approach
-2. **Configure GPIO7** — Set IO_MUX to GPIO function, route through GPIO matrix, enable output
-3. **Blink loop** — Toggle output via W1TS/W1TC registers with SYSTIMER-based delays
+2. **Enable entropy source & CSPRNG** — Configure the SAR ADC to feed noise into the hardware RNG, then seed a ChaCha20-based CSPRNG that backs `arc4random_buf` for `Hashable` support
+3. **Configure GPIO7** — Set IO_MUX to GPIO function, route through GPIO matrix, enable output
+4. **Blink loop** — Toggle output via W1TS/W1TC registers with SYSTIMER-based delays
 
 Register access uses [apple/swift-mmio](https://github.com/apple/swift-mmio) with definitions generated from the ESP32-C6 SVD file.
 
@@ -136,6 +140,7 @@ Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
 | [08-delay-serial](docs/08-delay-serial.md) | SYSTIMER delay & USB Serial JTAG output |
 | [09-build-system](docs/09-build-system.md) | Build pipeline (SwiftPM + toolset + Make) |
 | [10-tools](docs/10-tools.md) | Swift-based tools (elf2image, write-flash, image-info, gen-partition-table) |
+| [11-rng-and-hashable](docs/11-rng-and-hashable.md) | Hardware RNG, ChaCha20 CSPRNG & Hashable support |
 
 ## Acknowledgments
 

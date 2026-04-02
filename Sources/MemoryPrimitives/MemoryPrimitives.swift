@@ -37,6 +37,58 @@ public func memcpyStub(
     return dest
 }
 
+// 64-bit shift helpers required by compiler-rt on RV32.
+// Must use only 32-bit operations and pointer tricks to avoid
+// any 64-bit shift that would recursively call back into these.
+
+/// Split a UInt64 into (lo, hi) UInt32 halves without 64-bit shifts.
+@inline(__always)
+private func split64(_ value: UInt64) -> (lo: UInt32, hi: UInt32) {
+    var v = value
+    return withUnsafePointer(to: &v) { ptr in
+        let p = UnsafeRawPointer(ptr).assumingMemoryBound(to: UInt32.self)
+        return (p[0], p[1])  // little-endian RISC-V
+    }
+}
+
+/// Construct a UInt64 from (lo, hi) UInt32 halves without 64-bit shifts.
+@inline(__always)
+private func make64(lo: UInt32, hi: UInt32) -> UInt64 {
+    var result: UInt64 = 0
+    withUnsafeMutablePointer(to: &result) { ptr in
+        let p = UnsafeMutableRawPointer(ptr).assumingMemoryBound(to: UInt32.self)
+        p[0] = lo  // little-endian RISC-V
+        p[1] = hi
+    }
+    return result
+}
+
+@c(__ashldi3)
+@inline(never)
+public func ashldi3(_ a: UInt64, _ b: Int32) -> UInt64 {
+    let (lo, hi) = split64(a)
+    if b >= 32 {
+        return make64(lo: 0, hi: lo << (b &- 32))
+    } else if b == 0 {
+        return a
+    } else {
+        return make64(lo: lo << b, hi: (hi << b) | (lo >> (32 &- b)))
+    }
+}
+
+@c(__lshrdi3)
+@inline(never)
+public func lshrdi3(_ a: UInt64, _ b: Int32) -> UInt64 {
+    let (lo, hi) = split64(a)
+    if b >= 32 {
+        return make64(lo: hi >> (b &- 32), hi: 0)
+    } else if b == 0 {
+        return a
+    } else {
+        return make64(lo: (lo >> b) | (hi << (32 &- b)), hi: hi >> b)
+    }
+}
+
 @c(memmove)
 @inline(never)
 public func memmoveStub(
