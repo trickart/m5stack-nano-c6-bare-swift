@@ -6,6 +6,8 @@ struct Application {
     static func main() {
         clearBSS()
         disableWatchdogs()
+        enableEntropySource()
+        seedCsprng()
 
         usbPrint("Swift: GPIO init")
 
