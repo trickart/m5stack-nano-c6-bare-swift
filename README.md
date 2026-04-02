@@ -128,6 +128,26 @@ The 2nd stage bootloader (also written in Swift, `Sources/Bootloader/`) handles 
 
 Register access uses [apple/swift-mmio](https://github.com/apple/swift-mmio) with definitions generated from the ESP32-C6 SVD file.
 
+## Supported Swift Language Features
+
+The following Swift language features have been verified to work on this bare-metal target (ESP32-C6, RV32IMC, no OS):
+
+| Feature | Notes |
+|---------|-------|
+| `final class` (ARC) | Reference counting works without atomics on single-core |
+| `enum` + associated values | Pattern matching with `switch` |
+| `Optional` | `if let`, `guard let`, `??` |
+| Generics | Monomorphized at compile time |
+| Protocols + default implementations | As generic constraints |
+| Closures (non-escaping) | |
+| `indirect enum` | Heap-allocated recursive data structures |
+| Operator overloading | Custom `+`, `==`, etc. |
+| `@propertyWrapper` | e.g. clamping wrapper |
+| `Result<Success, Failure>` | With `Error`-conforming type |
+| `deinit` | Class destructor called correctly |
+| Computed properties / `didSet` | |
+| `@dynamicMemberLookup` | |
+
 ## Documentation
 
 Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
