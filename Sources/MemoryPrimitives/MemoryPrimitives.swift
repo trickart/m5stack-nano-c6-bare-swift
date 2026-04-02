@@ -89,6 +89,24 @@ public func lshrdi3(_ a: UInt64, _ b: Int32) -> UInt64 {
     }
 }
 
+@c(__ashrdi3)
+@inline(never)
+public func ashrdi3(_ a: UInt64, _ b: Int32) -> UInt64 {
+    let (lo, hi) = split64(a)
+    let signedHi = Int32(bitPattern: hi)
+    if b >= 32 {
+        let shifted = signedHi >> (b &- 32)  // arithmetic shift preserves sign
+        return make64(lo: UInt32(bitPattern: shifted), hi: UInt32(bitPattern: signedHi >> 31))
+    } else if b == 0 {
+        return a
+    } else {
+        return make64(
+            lo: (lo >> b) | (hi << (32 &- b)),
+            hi: UInt32(bitPattern: signedHi >> b)
+        )
+    }
+}
+
 @c(memmove)
 @inline(never)
 public func memmoveStub(

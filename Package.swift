@@ -29,6 +29,13 @@ let package = Package(
             ]
         ),
         .target(
+            name: "SoftFloat",
+            swiftSettings: [
+                .enableExperimentalFeature("Embedded"),
+                .enableExperimentalFeature("Extern"),
+            ]
+        ),
+        .target(
             name: "Registers",
             dependencies: [
                 .product(name: "MMIO", package: "swift-mmio"),
@@ -43,6 +50,7 @@ let package = Package(
                 "Registers",
                 "MemoryPrimitives",
                 "HeapAllocator",
+                "SoftFloat",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),
@@ -55,6 +63,7 @@ let package = Package(
             dependencies: [
                 "MemoryPrimitives",
                 "HeapAllocator",
+                "SoftFloat",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("Embedded"),

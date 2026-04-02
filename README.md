@@ -14,7 +14,8 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Outputs serial messages over USB Serial JTAG
 - Implements microsecond delays using the SYSTIMER peripheral
 - Enables the hardware RNG via SAR ADC entropy source, with a ChaCha20-based CSPRNG providing `arc4random_buf` for `Hashable` support (verified with Dieharder test suite)
-- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`, `__ashldi3`, `__lshrdi3`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory primitives isolated in dedicated targets
+- Implements complete IEEE 754 software floating-point (Double & Float: arithmetic, conversion, comparison, ceil/floor) on the FPU-less RV32IMC
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`, `__ashldi3`, `__lshrdi3`, `__ashrdi3`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory/float primitives isolated in dedicated targets
 
 ## Project Structure
 
@@ -22,8 +23,11 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 ├── Sources/
 │   ├── HeapAllocator/        # Free-list allocator (posix_memalign/free)
 │   │   └── HeapAllocator.swift
-│   ├── MemoryPrimitives/     # memset/memcpy/memmove stubs (isolated target)
+│   ├── MemoryPrimitives/     # memset/memcpy/memmove + shift stubs (isolated target)
 │   │   └── MemoryPrimitives.swift
+│   ├── SoftFloat/            # IEEE 754 software floating-point builtins
+│   │   ├── SoftDouble.swift  # Double-precision arithmetic, conversion, ceil/floor
+│   │   └── SoftFloat.swift   # Single-precision + Float↔Double conversion
 │   ├── Bootloader/           # 2nd stage bootloader (pure Swift)
 │   │   ├── Bootloader.swift  # Entry point — flash read, MMU setup, jump to app
 │   │   ├── ClockConfig.swift # PLL clock initialization (XTAL → 160MHz)
@@ -141,6 +145,7 @@ Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
 | [09-build-system](docs/09-build-system.md) | Build pipeline (SwiftPM + toolset + Make) |
 | [10-tools](docs/10-tools.md) | Swift-based tools (elf2image, write-flash, image-info, gen-partition-table) |
 | [11-rng-and-hashable](docs/11-rng-and-hashable.md) | Hardware RNG, ChaCha20 CSPRNG & Hashable support |
+| [12-soft-float](docs/12-soft-float.md) | Software floating-point builtins (Double & Float) |
 
 ## Acknowledgments
 
