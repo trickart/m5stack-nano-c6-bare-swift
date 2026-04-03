@@ -27,8 +27,6 @@ struct Application {
         // 3. Enable output
         gpio.enable_w1ts.write { $0.raw.storage = 1 << UInt32(ledPin) }
 
-        usbPrint("Swift: blinking")
-
         // 4. Blink loop
         while true {
             gpio.out_w1ts.write { $0.raw.storage = 1 << UInt32(ledPin) }
