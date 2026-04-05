@@ -15,7 +15,8 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 - Implements microsecond delays using the SYSTIMER peripheral
 - Enables the hardware RNG via SAR ADC entropy source, with a ChaCha20-based CSPRNG providing `arc4random_buf` for `Hashable` support (verified with Dieharder test suite)
 - Implements complete IEEE 754 software floating-point (Double & Float: arithmetic, conversion, comparison, ceil/floor) on the FPU-less RV32IMC
-- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`, `__ashldi3`, `__lshrdi3`, `__ashrdi3`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory/float primitives isolated in dedicated targets
+- Implements 64-bit integer arithmetic builtins (`__muldi3`, `__udivdi3`, `__umoddi3`, `__divdi3`, `__moddi3`) for `String(Int)` and other 64-bit operations
+- Provides runtime stubs (`posix_memalign`, `free`, `memset`, `memcpy`, `memmove`, `__ashldi3`, `__lshrdi3`, `__ashrdi3`) entirely in Swift, with a free-list heap allocator (supporting real deallocation and coalescing) and memory/float/integer primitives isolated in dedicated targets
 
 ## Project Structure
 
@@ -28,6 +29,8 @@ A bare-metal Swift project for the [M5Stack NanoC6](https://docs.m5stack.com/en/
 │   ├── SoftFloat/            # IEEE 754 software floating-point builtins
 │   │   ├── SoftDouble.swift  # Double-precision arithmetic, conversion, ceil/floor
 │   │   └── SoftFloat.swift   # Single-precision + Float↔Double conversion
+│   ├── SoftInt/              # 64-bit integer arithmetic builtins
+│   │   └── SoftInt.swift     # mul/div/mod for 64-bit integers on RV32
 │   ├── Bootloader/           # 2nd stage bootloader (pure Swift)
 │   │   ├── Bootloader.swift  # Entry point — flash read, MMU setup, jump to app
 │   │   ├── ClockConfig.swift # PLL clock initialization (XTAL → 160MHz)
@@ -166,6 +169,7 @@ Detailed write-ups for each subsystem are in the [`docs/`](docs/) directory:
 | [10-tools](docs/10-tools.md) | Swift-based tools (elf2image, write-flash, image-info, gen-partition-table) |
 | [11-rng-and-hashable](docs/11-rng-and-hashable.md) | Hardware RNG, ChaCha20 CSPRNG & Hashable support |
 | [12-soft-float](docs/12-soft-float.md) | Software floating-point builtins (Double & Float) |
+| [13-soft-int](docs/13-soft-int.md) | Software integer arithmetic builtins (64-bit mul/div/mod) |
 
 ## Acknowledgments
 
