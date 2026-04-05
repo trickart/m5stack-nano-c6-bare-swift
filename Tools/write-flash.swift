@@ -814,6 +814,7 @@ do {
 
     // Hard reset
     print("Hard resetting via RTS pin...")
+    port.setDTR(false)
     port.setRTS(true)
     usleep(100_000)
     port.setRTS(false)
