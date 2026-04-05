@@ -5,13 +5,12 @@ BIN := build/app.bin
 BOOTLOADER_ELF := .build/$(TRIPLE)/debug/Bootloader
 BOOTLOADER_BIN := build/bootloader.bin
 PARTITION_BIN := build/partition-table.bin
-PORT ?= /dev/cu.usbmodem*
 
 # Add ld.lld from Swift toolchain to PATH
 LLD_DIR := $(shell xcrun --toolchain $(TOOLCHAINS) -f ld.lld 2>/dev/null | xargs dirname)
 export PATH := $(LLD_DIR):$(PATH)
 
-.PHONY: build flash clean image_info partition-table
+.PHONY: build flash clean image_info partition-table bootloader reset monitor
 
 SWIFT_RUN := TOOLCHAINS=$(TOOLCHAINS) swift
 
@@ -42,6 +41,12 @@ flash: build bootloader partition-table
 
 image_info: build
 	$(SWIFT_RUN) Tools/image-info.swift $(BIN)
+
+reset:
+	$(SWIFT_RUN) Tools/reset.swift
+
+monitor:
+	$(SWIFT_RUN) Tools/monitor.swift
 
 clean:
 	TOOLCHAINS=$(TOOLCHAINS) swift package clean

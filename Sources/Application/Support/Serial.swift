@@ -46,6 +46,19 @@ func usbPrint(_ s: StaticString) {
     usbFlush()
 }
 
+/// Print a String followed by CR+LF.
+func usbPrint(_ s: String) {
+    var s = s
+    s.withUTF8 { buf in
+        for i in 0..<buf.count {
+            if !usbFifoWrite(buf[i]) { return }
+        }
+    }
+    _ = usbFifoWrite(0x0D)
+    _ = usbFifoWrite(0x0A)
+    usbFlush()
+}
+
 // MARK: - Numeric Output
 
 /// Print a decimal integer inline (no newline).
