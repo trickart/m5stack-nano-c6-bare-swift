@@ -48,6 +48,7 @@ A boundary-tagged free-list allocator with first-fit allocation, block splitting
 | `footer` | 4 bytes | Copy of `size` (enables O(1) backward coalescing) |
 
 - Minimum block size: 16 bytes (header + nextFree + pad + footer)
+- All block sizes are rounded up to 4-byte alignment (required because bit 0 of the size field is the used/free flag, and headers/footers use 4-byte `UInt` loads/stores)
 - Free blocks are linked in an explicit free list via the `nextFree` field
 
 **Alignment handling:**

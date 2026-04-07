@@ -120,6 +120,7 @@ func posixMemalign(
         }
 
         var needed = (userPtr &- curr) &+ requestSize &+ footerSize
+        needed = alignUp(needed, 4)  // Block sizes must be 4-byte aligned
         if needed < minBlock {
             needed = minBlock
         }
